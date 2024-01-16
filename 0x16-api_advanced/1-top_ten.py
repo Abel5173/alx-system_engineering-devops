@@ -1,22 +1,32 @@
 #!/usr/bin/python3
 """
-Queries Reddit API.
-Prints the titles of first 10 hot posts for a gven subreddit.
+1-top_ten
 """
+
 import requests
 
-
 def top_ten(subreddit):
-    """Function that queris Reddit API"""
-    if subreddit is None or type(subreddit) is not str:
-        return print(None)
-    url = "http://www.reddit.com/r/{}/hot.json".format(subreddit)
-    headers = {'User-Agent': 'Ajiboye Adeleye/ALX-Api-Advanced'}
-    params = {'limit': 10}
-    try:
-        response = requests.get(url, headers=headers, params=params)
-        dic = response.json().get('data')
-        for i in dic.get('children'):
-            print(i.get('data').get('title'))
-    except Exception:
-        return print(None)
+    url = f"https://www.reddit.com/r/{subreddit}/hot.json?limit=10"
+    headers = {"User-Agent": "my-script/1.0"}
+
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        data = response.json().get("data", {}).get("children", [])
+
+        if data:
+            for post in data:
+                print(post["data"]["title"])
+        else:
+            print("Subreddit has no hot posts.")
+    else:
+        print(None)
+
+if __name__ == '__main__':
+    # Let's check if the user passed a subreddit as an argument
+    import sys
+
+    if len(sys.argv) < 2:
+        print("Please pass an argument for the subreddit to search.")
+    else:
+        top_ten(sys.argv[1])
