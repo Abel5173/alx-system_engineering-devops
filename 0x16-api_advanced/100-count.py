@@ -1,51 +1,53 @@
 #!/usr/bin/python3
-""" Functions to adcquire info from API Reddit"""
+"""
+100-count
+"""
+
 import requests
-after = None
 
+def count_words(subreddit, word_list, after=None, counts=None):
+    if counts is None:
+        counts = {}
 
-def count_words(subreddit, word_list):
-    """Count the titles found with wordlist in subreddit"""
-    my_list = recurse(subreddit)
-    my_dict = {}
+    url = f"https://www.reddit.com/r/{subreddit}/hot.json?limit=100"
+    headers = {"User-Agent": "my-script/1.0"}
+    params = {"after": after} if after else {}
 
-    if my_list:
-        for word in word_list:
-            my_dict[word] = 0
+    response = requests.get(url, headers=headers, params=params)
 
-        for title in my_list:
-            title_split = title.split(" ")
-
-            for iter in title_split:
-                for iter_split in word_list:
-                    if iter.lower() == iter_split.lower():
-                        my_dict[iter_split] += 1
-
-        for key, val in sorted(my_dict.items(),  key=lambda x: x[1],
-                               reverse=True):
-            if val != 0:
-                print("{}: {}".format(key, val))
-
-
-def recurse(subreddit, hot_list=[]):
-    """ recurse is a function that return hot list from
-        a subreddit"""
-    global after
-    headers = {'User-Agent': 'ledbag123'}
-    url = "https://www.reddit.com/r/{}/hot.json".format(subreddit)
-    parameters = {'after': after}
-    response = requests.get(url, headers=headers, allow_redirects=False,
-                            params=parameters)
     if response.status_code == 200:
-        prox = response.json().get('data').get('after')
+        data = response.json().get("data", {})
+        children = data.get("children", [])
 
-        if prox is not None:
-            after = prox
-            recurse(subreddit, hot_list)
-        list_titles = response.json().get('data').get('children')
+        for post in children:
+            title = post["data"]["title"].lower()
 
-        for title_ in list_titles:
-            hot_list.append(title_.get('data').get('title'))
-        return hot_list
+            for word in word_list:
+                word_lower = word.lower()
+
+                if word_lower in title:
+                    counts[word_lower] = counts.get(word_lower, 0) + title.count(word_lower)
+
+        after = data.get("after")
+        return count_words(subreddit, word_list, after, counts)
     else:
-        return (None)
+        if counts:
+            print_results(counts)
+        else:
+            print("Nothing to show.")
+
+def print_results(counts):
+    sorted_counts = sorted(counts.items(), key=lambda x: (-x[1], x[0]))
+
+    for word, count in sorted_counts:
+        print(f"{word}: {count}")
+
+if __name__ == '__main__':
+    # Let's check if the user passed a subreddit and a list of keywords as arguments
+    import sys
+
+    if len(sys.argv) < 3:
+        print("Usage: {} <subreddit> <list of keywords>".format(sys.argv[0]))
+        print("Ex: {} programming 'python java javascript'".format(sys.argv[0]))
+    else:
+        count_words(sys.argv[1], [x for x in sys.argv[2].split()])
